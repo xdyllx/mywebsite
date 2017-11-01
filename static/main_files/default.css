@@ -1,0 +1,255 @@
+body {
+    margin: 0;
+    font-family: "Segoe UI Light", "Lato", "Segoe UI", "Microsoft YaHei", "Î¢ÈíÑÅºÚ", STXihei, "»ªÎÄÏ¸ºÚ", sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Microsoft YaHei', sans-serif;
+}
+
+a {
+    text-decoration: none;
+}
+
+abbr[title], acronym[title] {
+  border-bottom: dotted 1px;
+}
+
+.background {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    background-size: cover;
+    -webkit-transition: opacity 0.4s linear;  /* Chrome 1-25, Safari 3.2+ */
+       -moz-transition: opacity 0.4s linear;  /* Firefox 4-15 */
+         -o-transition: opacity 0.4s linear;  /* Opera 10.50¨C12.00 */
+            transition: opacity 0.4s linear;  /* Chrome 26, Firefox 16+, IE 10+, Opera 12.10+ */
+}
+
+.background.active { opacity: 1 !important; }
+
+#master-bg {
+    background-size: auto;
+    background-image: url(solar.jpg);
+    background-repeat: repeat;
+    background-position: top right;
+    opacity: 1;
+}
+
+#sports-bg { background-image: url(sports_red.jpg); }
+#music-bg { background-image: url(others.jpg); }
+#entertainment-bg { background-image: url(dota2.jpg); }
+#dev-bg { background-image: url(heike.jpg); background-position: top right}
+
+#intro {
+    position: absolute;
+    left: 120px;
+    bottom: 80px;
+    width: 400px;
+    color: #ccc;
+    font-family: "Microsoft YaHei", sans-serif;
+    background-color: rgba(0, 0, 0, .6);
+    opacity: 0;
+    transition: opacity 0.4s, bottom 0.4s;
+}
+
+#intro a:link, #intro a:visited { color: white; }
+
+#intro a:hover, #intro a:active { text-decoration: underline; }
+
+#intro.active {
+    bottom: 100px;
+    opacity: 1;
+    z-index: 99;
+}
+
+#intro .wrapper {
+    margin: 0 20px;
+    line-height: 145%;
+}
+
+#nav-island {
+    position: absolute;
+    width: 360px;
+    height: 360px;
+    right: 230px;
+    top: 185px;
+    background-repeat: no-repeat;
+}
+
+#island-bg {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    /* opacity: 0.65; */
+    background: url(hexagon-island.png);
+}
+
+.tile-container {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    -webkit-perspective: 1000px;  /* Chrome 12+, Safari 4+ */
+       -moz-perspective: 1000px;  /* Firefox 10+ */
+        -ms-perspective: 1000px;  /* IE 10 */
+            perspective: 1000px;
+}
+
+.tile-container:hover .face, .tile-container.active .face {
+    -webkit-transform: rotateY(180deg);
+       -moz-transform: rotateY(180deg);
+        -ms-transform: rotateY(180deg);
+            transform: rotateY(180deg);
+}
+
+.tile, .master-tile {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    -webkit-transition: all 0.4s ease;  /* Chrome 1-25, Safari 3.2+ */
+       -moz-transition: all 0.4s ease;  /* Firefox 4-15 */
+         -o-transition: all 0.4s ease;  /* Opera 10.50¨C12.00 */
+            transition: all 0.4s ease;  /* Chrome 26, Firefox 16+, IE 10+, Opera 12.10+ */
+    /* -webkit-transform-style: preserve-3d;
+       -moz-transform-style: preserve-3d;
+        -ms-transform-style: preserve-3d;
+            transform-style: preserve-3d; */
+}
+
+.face {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-repeat: no-repeat;
+    -webkit-backface-visibility: hidden;
+       -moz-backface-visibility: hidden;
+        -ms-backface-visibility: hidden;
+            backface-visibility: hidden;
+    -webkit-transition: all 0.4s ease;  /* Chrome 1-25, Safari 3.2+ */
+       -moz-transition: all 0.4s ease;  /* Firefox 4-15 */
+         -o-transition: all 0.4s ease;  /* Opera 10.50¨C12.00 */
+            transition: all 0.4s ease;  /* Chrome 26, Firefox 16+, IE 10+, Opera 12.10+ */
+}
+
+.tile .back {
+    line-height: 132px;
+    text-align: center;
+    vertical-align: middle;
+    color: #f2f2f2;
+    font-family: 'Microsoft YaHei', sans-serif;
+    font-size: 36px;
+    -webkit-transform: rotateY(180deg);
+       -moz-transform: rotateY(180deg);
+        -ms-transform: rotateY(180deg);
+            transform: rotateY(180deg);
+}
+
+#master {
+    right: 120px;
+    top: 120px;
+}
+
+#master .front {
+    background-image: url(black_front.jpg);
+	background-repeat:no-repeat; 
+	background-size:100% 100%;
+}
+
+.master-tile .back {
+    background-image: url(black_back.jpg);
+	background-size:100% 100%;
+    opacity: 0;
+}
+
+.master-tile .face {
+    -webkit-transition: opacity 0.3s ease-in-out;  /* Chrome 1-25, Safari 3.2+ */
+       -moz-transition: opacity 0.3s ease-in-out;  /* Firefox 4-15 */
+         -o-transition: opacity 0.3s ease-in-out;  /* Opera 10.50¨C12.00 */
+            transition: opacity 0.3s ease-in-out;  /* Chrome 26, Firefox 16+, IE 10+, Opera 12.10+ */
+}
+
+.tile-container:hover .master-tile .back {
+    opacity: 1;
+}
+
+.tile-container:hover .face, .tile-container.active .face {
+    -webkit-transform: rotateY(360deg);
+       -moz-transform: rotateY(360deg);
+        -ms-transform: rotateY(360deg);
+            transform: rotateY(360deg);
+}
+/*
+#design {
+    right: 256px;
+    top: 116px;
+}
+
+#design .front { background-image: url(tile-design.png); }
+#design .back { background-image: url(tile-design-border.png); }
+*/
+#sports {
+    right: 120px;
+    top: 0px;
+}
+
+#sports .front { background-image: url(sports.jpg);background-size:100% 100%; }
+#sports .back { background-image: url(red.jpg); }
+
+#music {
+    right: 0px;
+    top: 120px;
+}
+
+#music .front { background-image: url(lang.jpg); }
+#music .back { background-image: url(green.jpg); }
+
+#entertainment {
+    right: 120px;
+    top: 240px;
+}
+
+#entertainment .front { background-image: url(game.jpg);background-size:100% 100%; }
+#entertainment .back { background-image: url(yellow.jpg); }
+
+#dev {
+    right: 240px;
+    top: 120px;
+}
+
+#dev .front { background-image: url(programer.jpg); background-size:100% 100%; }
+#dev .back { background-image: url(blue.jpg); }
+
+.content {
+    position: absolute;
+    height: 100%;
+    color: white;
+    left: 120px;
+    width: 400px;
+    opacity: 0;
+    transition: opacity 0.3s ease-in, background-color 0.3s ease-in;
+    line-height: 145%;
+}
+
+.content.active {
+    opacity: 1;
+}
+
+.content.sports { background-color: rgba(255, 35, 37, 0.6); }
+.content.music { background-color: rgba(0, 255, 64, 0.6); }
+.content.entertainment { background-color: rgba(255, 182, 0, 0.6); }
+.content.dev { background-color: rgba(0, 103, 189, 0.6); }
+
+.content .descr-box {
+    position: absolute;
+    top: 245px;
+    margin: 0 20px;
+    opacity: 0;
+    transition: all 0.2s ease-in, opacity 0.25s ease-in;
+}
+
+.content .descr-box.active {
+    top: 220px;
+    opacity: 1;
+    z-index: 99;
+}

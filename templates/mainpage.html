@@ -1,0 +1,91 @@
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>Main Page</title>
+    <link rel="shortcut icon" id="favicon" href="http://kagome.io/neue/favicon.png">
+    {% load static from staticfiles %}
+    <link type="text/css" rel="stylesheet" href="{% static "main_files/default.css" %}">
+    <script type="text/javascript" src="{% static "main_files/jquery-1.js" %}"></script>
+    <script type="text/javascript" src="{% static "main_files/default.js" %}"></script>
+</head>
+
+<body>
+
+<div class="background" id="master-bg"></div>
+<div class="background active" id="master-bg"><div class="image-copyright"></div></div>
+<div class="background" id="sports-bg"><div class="image-copyright"></div></div>
+<div class="background" id="music-bg"><div class="image-copyright"></div></div>
+<div class="background" id="entertainment-bg"><div class="image-copyright"></div></div>
+<div class="background" id="dev-bg"><div class="image-copyright"></div></div>
+
+<div id="intro" class="active">
+    <div class="wrapper">
+        <h2>Welcome to my main page.</h2>
+		<h2>I'm XDY.</h2>
+    </div>
+</div>
+
+<div id="nav-island">
+    <div id="island-bg"></div>
+    <a href="#master"><div class="tile-container active" id="master">
+        <div class="master-tile">
+            <div class="front face"></div>
+            <div class="back face"></div>
+        </div>
+    </div></a>
+
+    <a href="#sports"><div class="tile-container" id="sports">
+        <div class="tile">
+            <div class="front face"></div>
+            <div class="back face">运动</div>
+        </div>
+    </div></a>
+
+    <a href="#music"><div class="tile-container" id="music">
+        <div class="tile">
+            <div class="front face"></div>
+            <div class="back face">其他</div>
+        </div>
+    </div></a>
+
+    <a href="#entertainment"><div class="tile-container" id="entertainment">
+        <div class="tile">
+            <div class="front face"></div>
+            <div class="back face">娱乐</div>
+        </div>
+    </div></a>
+
+    <a href="#dev"><div class="tile-container" id="dev">
+        <div class="tile">
+            <div class="front face"></div>
+            <div class="back face">编程</div>
+        </div>
+    </div></a>
+</div>
+
+<div class="content active design" id="content-design">
+    <div class="descr-box" id="sports-descr">
+        <h2>运动</h2>
+        <p>运动对我来说更多的像一种生活的调味品，每当遇到困难或压力很大时，我都会挤出时间慢跑几圈，为的是享有短暂的心灵的宁静和宝贵的思考的时间。</p>
+    </div>
+    <div class="descr-box" id="music-descr">
+        <h2>其他</h2>
+        <p>谢谢</p>
+		<p>Thank you</p>
+		<p>ありがど</p>
+    </div>
+    <div class="descr-box" id="entertainment-descr">
+        <h2>娱乐</h2>
+        <p>兴趣广泛，acgn都有涉猎。主要娱乐还是anime和game.</p>
+        <p>动画方面，2016年clannad after story 入坑。之后一段时间恶补了百来部番，却难以找到当初看cl的那份感动了。最喜欢的作品有clannad，水星领航员系列，蜂蜜与四叶草，虫师系列。</p>
+		<p>游戏方面，一句话概括：三年dota1,四年dota2，唯一本命。CN DOTA, BEST DOTA!</p>
+	</div>
+    <div class="descr-box" id="dev-descr">
+        <h2>编程_</h2>
+        <p>虽然进入大学才开始编程，但不得不承认编程给我带来了很大的乐趣。从最开始hello world的懵懂无知，再到算法，数据结构的逐步了解，再到实现一个个项目工程，每一次新的发现都能给我带来新的惊喜。在千辛万苦排除各种bug后程序运行正确的那一刹那，那种成就感是无可比拟的。</p>
+		<p>虽然是C++入门，但现在使用最多的还是python，无论是django搭建网站，还是Tensorflow跑神经网络，python丰富的库和简洁的语法提供了极大的便利，容我吹一句python是世界上最好的语言！</p>
+	</div>
+</div>
+
+
+
+</body></html>
