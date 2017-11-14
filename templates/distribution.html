@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>Bar Chart</title>
+    {% load static from staticfiles %}
+    <link rel="stylesheet" type="text/css" href="{% static "css/bootstrap.min.css" %}" />
+    <script async="" src="{% static "js/analytics.js" %}"></script><script src="{% static "js/Chart.min.js" %}"></script><style type="text/css">/* Chart.js */
+@-webkit-keyframes chartjs-render-animation{from{opacity:0.99}to{opacity:1}}@keyframes chartjs-render-animation{from{opacity:0.99}to{opacity:1}}.chartjs-render-monitor{-webkit-animation:chartjs-render-animation 0.001s;animation:chartjs-render-animation 0.001s;}</style>
+    <script src="{% static "js/utils.js" %}"></script>
+    <style>
+    canvas {
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select: none;
+    }
+    </style>
+</head>
+
+<body>
+    <div id="container" style="width: 75%;"><div style="position: absolute; left: 100px; top: 0px; right: 0px; bottom: 0px; overflow: hidden; pointer-events: none; visibility: hidden; z-index: -1;" class="chartjs-size-monitor"><div class="chartjs-size-monitor-expand" style="position:absolute;left:0;top:0;right:0;bottom:0;overflow:hidden;pointer-events:none;visibility:hidden;z-index:-1;"><div style="position:absolute;width:1000000px;height:1000000px;left:0;top:0"></div></div><div class="chartjs-size-monitor-shrink" style="position:absolute;left:0;top:0;right:0;bottom:0;overflow:hidden;pointer-events:none;visibility:hidden;z-index:-1;"><div style="position:absolute;width:200%;height:200%;left:0; top:0"></div></div></div>
+        <canvas id="canvas" style="display: block; height: 570px; width: 1140px;" width="1425" height="712" class="chartjs-render-monitor"></canvas>
+    </div>
+    <div>
+    <label class="checkbox-inline">
+        <input type="checkbox" id="inlineCheckbox1" value="option1" checked> 看过
+    </label>
+    <label class="checkbox-inline">
+        <input type="checkbox" id="inlineCheckbox2" value="option2"> 在看
+    </label>
+    <label class="checkbox-inline">
+        <input type="checkbox" id="inlineCheckbox3" value="option3"> 搁置
+    </label>
+    <label class="checkbox-inline">
+        <input type="checkbox" id="inlineCheckbox3" value="option3"> 抛弃
+    </label>
+    <button type="button" class="btn btn-default">确认</button>
+</div>
+<form role="form">
+  <div class="form-group" style="width : 200px;">
+    <label for="name">显示</label>
+    <select class="form-control">
+      <option>数值</option>
+      <option>百分比</option>
+    </select>
+  </div>
+</form>
+    <button id="randomizeData">Randomize Data</button>
+    <button id="addDataset">Add Dataset</button>
+    <button id="removeDataset">Remove Dataset</button>
+    <button id="addData">Add Data</button>
+    <button id="removeData">Remove Data</button>
+    <script>
+        var MONTHS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+        var color = Chart.helpers.color;
+        var barChartData = {
+            labels: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+            datasets: [{
+                label: '看过',
+                backgroundColor: color(window.chartColors.blue).alpha(0.5).rgbString(),
+                borderColor: window.chartColors.blue,
+                borderWidth: 1,
+                data: {{ data | safe }}
+                    //[1,0,3,10,15,20,30,15,10,7]
+
+            }]
+
+
+        };
+
+        var configs = {
+                //scaleOverlay : false  // 网格线是否在数据线的上面
+                scaleLabel : "<%=value%>",// 标签显示值
+                scaleShowGridLines : true,// 是否显示网格线
+                scaleShowValues: true,
+                scaleValuePaddingX: 13,
+                scaleValuePaddingY: 13
+            };
+
+        window.onload = function() {
+            var ctx = document.getElementById("canvas").getContext("2d");
+            window.myBar = new Chart(ctx, {
+                type: 'bar',
+                data: barChartData,
+                configs: configs,
+                options: {
+                    scaleShowValues: true,
+                    scaleValuePaddingX: 13,
+                    scaleValuePaddingY: 13,
+                    responsive: true,
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: '评分分布'
+                    }
+                }
+            });
+
+        };
+
+        document.getElementById('randomizeData').addEventListener('click', function() {
+            var zero = Math.random() < 0.2 ? true : false;
+            barChartData.datasets.forEach(function(dataset) {
+                dataset.data = dataset.data.map(function() {
+                    return zero ? 0.0 : randomScalingFactor();
+                });
+
+            });
+            window.myBar.update();
+        });
+
+        var colorNames = Object.keys(window.chartColors);
+        document.getElementById('addDataset').addEventListener('click', function() {
+            var colorName = colorNames[barChartData.datasets.length % colorNames.length];;
+            var dsColor = window.chartColors[colorName];
+            var newDataset = {
+                label: 'Dataset ' + barChartData.datasets.length,
+                backgroundColor: color(dsColor).alpha(0.5).rgbString(),
+                borderColor: dsColor,
+                borderWidth: 1,
+                data: []
+            };
+
+            for (var index = 0; index < barChartData.labels.length; ++index) {
+                newDataset.data.push(randomScalingFactor());
+            }
+
+            barChartData.datasets.push(newDataset);
+            window.myBar.update();
+        });
+
+        document.getElementById('addData').addEventListener('click', function() {
+            if (barChartData.datasets.length > 0) {
+                var month = MONTHS[barChartData.labels.length % MONTHS.length];
+                barChartData.labels.push(month);
+
+                for (var index = 0; index < barChartData.datasets.length; ++index) {
+                    //window.myBar.addData(randomScalingFactor(), index);
+                    barChartData.datasets[index].data.push(randomScalingFactor());
+                }
+
+                window.myBar.update();
+            }
+        });
+
+        document.getElementById('removeDataset').addEventListener('click', function() {
+            barChartData.datasets.splice(0, 1);
+            window.myBar.update();
+        });
+
+        document.getElementById('removeData').addEventListener('click', function() {
+            barChartData.labels.splice(-1, 1); // remove the label first
+
+            barChartData.datasets.forEach(function(dataset, datasetIndex) {
+                dataset.data.pop();
+            });
+
+            window.myBar.update();
+        });
+    </script>
+
+
+
+</body></html>

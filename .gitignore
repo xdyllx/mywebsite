@@ -4,3 +4,12 @@
 static/media
 .coverage
 db.sqlite3
+check.py
+check2.py
+user_collect/
+user_do/
+user_dropped/
+user_on_hold/
+bgm_anime/
+scrapy.cfg
+tmp.txt
