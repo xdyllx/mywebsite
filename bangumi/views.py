@@ -15,11 +15,12 @@ from django.utils.safestring import mark_safe
 
 
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:23.0) Gecko/20100101 Firefox/23.0'}
-MIN_PEOPLE_NUM = 3
+MIN_PEOPLE_NUM = 5
 ONE_PAGE_MAX_NUM = 100
 TYPE = ['collect', 'do', 'on_hold', 'dropped']
 CHINESE_TYPE = ['看过', '在看', '搁置', '抛弃']
 UPDATE_DAYS = 7
+NUM_ONE_PAGE = 24
 
 anime_num_pattern = '<ul class=\"navSubTabs\">.*?</ul>'
 span_pattern = '<span>.*?</span>'
@@ -27,6 +28,12 @@ span_pattern = '<span>.*?</span>'
 
 def to_str(string):
     return string.encode('latin-1').decode('unicode_escape').encode('raw_unicode_escape').decode()
+
+
+def is_positive_int(string):
+    int_pattern = r'^0*[123456789]\d*$'
+    res = re.match(pattern=int_pattern, string=string)
+    return res is not None
 
 
 def test_web(request):
@@ -59,13 +66,12 @@ def get_bgm_num(bgm_id):
     a = re.findall(string=data, pattern=anime_num_pattern, flags=re.S)
     if len(a) == 1:
         b = re.findall(string=a[0], pattern=span_pattern)
-        print b
         for item in b:
             for i in range(4):
                 tmp = item.find(CHINESE_TYPE[i])
                 if tmp != -1:
                     tmp1 = item.find(')')
-                    print item[tmp+8:tmp1]
+                    # print item[tmp+8:tmp1]
                     num[i] = int(item[tmp+8:tmp1])
                     break
 
@@ -288,6 +294,11 @@ def get_friend_evaluation(request):
     friends = get_friend(user_id)
     if len(friends) == 0:
         return render(request, 'error.html', {'error_message': 'Sorry, you do not have friend.'})
+    page = request.GET.get('page')
+    if page is None or is_positive_int(page) is not True:
+        page = 1
+    else:
+        page = int(page)
 
     show_list = []
     anime_id = []
@@ -320,11 +331,16 @@ def get_friend_evaluation(request):
             show_list.append({'id': anime_id[i], 'grade': round(float(grade[i]) / count[i], 4), 'count': count[i]})
 
     show_list.sort(key=lambda x: x['grade'], reverse=True)
-    print len(show_list)
-    if len(show_list) > ONE_PAGE_MAX_NUM:
-        show_list = show_list[:ONE_PAGE_MAX_NUM]
+    list_length = len(show_list)
+    page_max = (list_length - 1) / NUM_ONE_PAGE + 1
+    if page > page_max:
+        page = page_max
+    if page * NUM_ONE_PAGE > list_length:
+        show_list = show_list[(page-1)*NUM_ONE_PAGE+1:]
+    else:
+        show_list = show_list[(page-1)*NUM_ONE_PAGE+1:page*NUM_ONE_PAGE+1]
     real_list = []
-    c = 0
+    c = (page-1) * 24
     for item in show_list:
 
         # print item['id']
@@ -333,11 +349,17 @@ def get_friend_evaluation(request):
             continue
         tmpa = tmpa[0]
         c += 1
-        dic = {'name': tmpa.name, 'foreign_name': tmpa.foreign_name,
-               'bgm_id': item['id'], 'num': item['count'], 'grade': item['grade'],
+        dic = {'name': tmpa.name, 'foreign_name': tmpa.foreign_name, 'bgm_id': item['id'],
+               'num': item['count'], 'grade': item['grade'], 'int_grade': int(item['grade']),
                'img_url': tmpa.img_url, 'info': tmpa.info, 'rank': c,  'flag': c % 2}
         real_list.append(dic)
-    return render(request, 'showAnime.html', {'animelist': real_list})
+
+    before_list = range(max(1, page-5), page-1)
+    after_list = range(page+1, min(page+5, page_max+1))
+
+    return render(request, 'showAnime.html', {'animelist': real_list, 'bgm_id': user_id,
+                                              'page': page, 'page_max': page_max,
+                                              'before_list': before_list, 'after_list': after_list})
 
 
 def get_friend(username):
