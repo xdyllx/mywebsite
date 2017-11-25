@@ -53,6 +53,8 @@ def get_bgm_num(bgm_id):
     request = urllib2.Request(url=url, headers=headers)
     response = urllib2.urlopen(request)
     data = response.read()
+    if data.find('数据库中没有查询到该用户的信息') != -1:
+        return [-1] * 4
     num = [0] * 4
     a = re.findall(string=data, pattern=anime_num_pattern, flags=re.S)
     if len(a) == 1:
@@ -95,6 +97,8 @@ def show_anime(request):
 def add_user(bgm_id):
     print 'add user', bgm_id
     collect, do, on_hold, dropped = get_user_all_bgm(bgm_id)
+    if collect is None:
+        return None
     bgmuser = bgmUser.objects.filter(bgm_id=bgm_id)
     if len(bgmuser) == 0:
         bgmuser = bgmUser.objects.create(
@@ -125,10 +129,12 @@ def update_user(bgm_id):
 
 def show_distribution(request):
     user_id = request.GET.get('id')
+    if user_id is None:
+        return render(request, 'error.html')
     bgmuser = bgmUser.objects.filter(bgm_id=user_id)
     if len(bgmuser) == 0:
-        add_user(user_id)
-        bgmuser = bgmUser.objects.filter(bgm_id=user_id)[0]
+        bgmuser = add_user(user_id)
+        return render(request, 'error.html', {'error_message':'抱歉，  没有查询到该用户的信息'})
     elif dif_time_from_now(bgmuser[0].time) > UPDATE_DAYS:
         bgmuser = update_user(user_id)
     else:
@@ -200,6 +206,8 @@ def get_distribution(anime_list):
 
 def get_user_all_bgm(bgm_id):
     num = get_bgm_num(bgm_id)
+    if num[0] == -1:
+        return [None] * 4
     collect = get_user_collect(bgm_id, num[0], 'collect')
     do = get_user_collect(bgm_id, num[1], 'do')
     on_hold = get_user_collect(bgm_id, num[2], 'on_hold')

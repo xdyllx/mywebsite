@@ -7,5 +7,6 @@ urlpatterns = [
     url(r'friend/$', views.get_friend_evaluation, name='friend'),
     url(r'test/$', views.test_web, name='test'),
     url(r'updateInfo/$', views.updateInfo, name='updateInfo'),
-    url(r'refreshInfo/$', views.refreshInfo, name='refreshInfo')
+    url(r'refreshInfo/$', views.refreshInfo, name='refreshInfo'),
+    url(r'showDis/$', views.show_distribution, name='show_distribution')
 ]

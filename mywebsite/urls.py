@@ -20,6 +20,6 @@ from bangumi.views import show_anime, show_distribution
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^$', show_distribution),
+    url(r'^$', show_main_page),
     url(r'^bgm/', include('bangumi.urls')),
 ]
