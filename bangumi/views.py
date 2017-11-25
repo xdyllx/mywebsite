@@ -3,18 +3,26 @@
 import re
 from bs4 import BeautifulSoup as bs
 import urllib,  urllib2
+import grequests
 from datetime import datetime
 import os
 from django.shortcuts import render
 from models import bgmUser, Anime
 import json
-
+from django.views.decorators.csrf import csrf_exempt
+from django.http import Http404, HttpResponseRedirect, HttpResponse
 from django.utils.safestring import mark_safe
 
 
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:23.0) Gecko/20100101 Firefox/23.0'}
 MIN_PEOPLE_NUM = 3
 ONE_PAGE_MAX_NUM = 100
+TYPE = ['collect', 'do', 'on_hold', 'dropped']
+CHINESE_TYPE = ['看过', '在看', '搁置', '抛弃']
+UPDATE_DAYS = 7
+
+anime_num_pattern = '<ul class=\"navSubTabs\">.*?</ul>'
+span_pattern = '<span>.*?</span>'
 
 
 def to_str(string):
@@ -22,10 +30,58 @@ def to_str(string):
 
 
 def test_web(request):
-    a = bgmUser.objects.filter(bgm_id='basertyu')[0]
+    # a = bgmUser.objects.filter(bgm_id='')[0]
     # a.delete()
-    print a.get_collect()
     return render(request, 'error.html')
+
+
+def dif_time_from_now(time):
+    # _time = datetime.strptime(time, '%Y-%m-%d')
+    now = datetime.now().date()
+    return (now-time).days
+
+
+def get_current_time():
+    # time = str(datetime.now())
+    # pos = time.find(' ')
+    # return time[:pos]
+    return datetime.now().date()
+
+
+def get_bgm_num(bgm_id):
+    url = 'http://bgm.tv/anime/list/%s/collect' % bgm_id
+    request = urllib2.Request(url=url, headers=headers)
+    response = urllib2.urlopen(request)
+    data = response.read()
+    num = [0] * 4
+    a = re.findall(string=data, pattern=anime_num_pattern, flags=re.S)
+    if len(a) == 1:
+        b = re.findall(string=a[0], pattern=span_pattern)
+        print b
+        for item in b:
+            for i in range(4):
+                tmp = item.find(CHINESE_TYPE[i])
+                if tmp != -1:
+                    tmp1 = item.find(')')
+                    print item[tmp+8:tmp1]
+                    num[i] = int(item[tmp+8:tmp1])
+                    break
+
+    else:
+        print 'error: cannot get number show on bgm '
+
+    return num
+
+
+def muti_scrawl_page(urls):
+    rs = (grequests.get(u) for u in urls)
+    tmp = grequests.map(rs, size=6)
+    for item in tmp:
+        if item is None:
+            print 'None response'
+            tmp = grequests.map(rs, size=5)
+            break
+    return tmp
 
 
 def show_anime(request):
@@ -38,29 +94,101 @@ def show_anime(request):
 
 def add_user(bgm_id):
     print 'add user', bgm_id
-    user_collect = get_user_collect(bgm_id)
-    bgmuser = bgmUser.objects.create(
-        bgm_id=bgm_id,
-        time=str(datetime.now()).split()[0],
-    )
-    bgmuser.set_collect(user_collect)
-    print len(user_collect)
-    bgmuser.collect = user_collect
+    collect, do, on_hold, dropped = get_user_all_bgm(bgm_id)
+    bgmuser = bgmUser.objects.filter(bgm_id=bgm_id)
+    if len(bgmuser) == 0:
+        bgmuser = bgmUser.objects.create(
+            bgm_id=bgm_id,
+            time=get_current_time(),
+        )
+    else:
+        bgmuser = bgmuser[0]
+    bgmuser.set_all(collect, do, on_hold, dropped)
+    # bgmuser.collect = user_collect
     bgmuser.save()
-    return user_collect
+    return bgmuser
+
+
+def update_user(bgm_id):
+    print 'update user', bgm_id
+    bgmuser = bgmUser.objects.filter(bgm_id=bgm_id)
+    if len(bgmuser) != 1:
+        print 'update user error', len(bgmuser)
+        return -1
+
+    collect, do, on_hold, dropped = get_user_all_bgm(bgm_id)
+    bgmuser[0].set_all(collect, do, on_hold, dropped)
+    bgmuser[0].time = get_current_time()
+    bgmuser[0].save()
+    return bgmuser[0]
 
 
 def show_distribution(request):
     user_id = request.GET.get('id')
     bgmuser = bgmUser.objects.filter(bgm_id=user_id)
     if len(bgmuser) == 0:
+        add_user(user_id)
+        bgmuser = bgmUser.objects.filter(bgm_id=user_id)[0]
+    elif dif_time_from_now(bgmuser[0].time) > UPDATE_DAYS:
+        bgmuser = update_user(user_id)
+    else:
+        bgmuser = bgmuser[0]
+
+    collect = bgmuser.get_collect()
+    distri = get_distribution(collect)
+    dropped = bgmuser.get_collect(_type='dropped')
+    dropped_distri = get_distribution(dropped)
+    print bgmuser.time
+    return render(request, 'distribution.html', {'collect_data': json.dumps(distri[1:]),
+                                                 'dropped_data': json.dumps(dropped_distri[1:]),
+                                                 'time': str(bgmuser.time), 'bgm_id':user_id})
+
+
+def refreshInfo(request):
+    user_id = request.POST.get('id')
+    tmp = dict(request.POST)
+    choice = tmp.get('choice[]')
+    bgmuser = bgmUser.objects.filter(bgm_id=user_id)
+
+    if len(bgmuser) != 1:
+        print 'refreshInfo error'
+        return render(request, 'error.html')
+    else:
+        distri = []
+        data = {'status': 'success'}
+        for i in range(4):
+            if choice[i] == 'true':
+                distri.append(get_distribution(bgmuser[0].get_collect(_type=TYPE[i]))[1:])
+            else:
+                distri.append([])
+        data['distri'] = distri
+        data['choice'] = choice
+        return HttpResponse(json.dumps(data), content_type='application/json')
+
+
+@csrf_exempt
+def updateInfo(request):
+    # return HttpResponse(json.dumps({"status": "success", "distribution": [1]*10}), content_type='application/json')
+    user_id = request.POST.get('id')
+    tmp = dict(request.POST)
+    choice = tmp.get('choice[]')
+    print user_id, type(user_id)
+    bgmuser = update_user(user_id)
+    if bgmuser == -1:
         print 'no such user'
         return render(request, 'error.html')
     else:
-        collect = bgmuser[0].get_collect()
-        distri = get_distribution(collect)
-
-        return render(request, 'distribution.html', {'data': json.dumps(distri[1:])})
+        distri = []
+        data = {'status': 'success'}
+        for i in range(4):
+            if choice[i] == 'true':
+                distri.append(get_distribution(bgmuser.get_collect(_type=TYPE[i]))[1:])
+            else:
+                distri.append([])
+        data['distri'] = distri
+        data['choice'] = choice
+        data['time'] = bgmuser.time
+        return HttpResponse(json.dumps(data), content_type='application/json')
 
 
 def get_distribution(anime_list):
@@ -70,21 +198,35 @@ def get_distribution(anime_list):
     return distri
 
 
-def get_user_collect(bgm_id):
-    count = 0
+def get_user_all_bgm(bgm_id):
+    num = get_bgm_num(bgm_id)
+    collect = get_user_collect(bgm_id, num[0], 'collect')
+    do = get_user_collect(bgm_id, num[1], 'do')
+    on_hold = get_user_collect(bgm_id, num[2], 'on_hold')
+    dropped = get_user_collect(bgm_id, num[3], 'dropped')
+    return collect, do, on_hold, dropped
+
+
+def get_all_num(bgm_id):
+    url = 'http://bgm.tv/user/' + bgm_id
+    request = urllib2.Request(url=url, headers=headers)
+    response = urllib2.urlopen(request)
+    data = response.read()
+
+
+def get_user_collect(bgm_id, anime_num, _type='collect'):
+    if anime_num == 0:
+        return []
+
     user_collect = []
-    while 1:
-        now = datetime.now()
-        display_now = str(now).split(' ')[1][:-3]
-        count += 1
-        print(display_now, u'第%d页' % count)
-        url = 'http://bgm.tv/anime/list/' + bgm_id + '/collect?orderby=rate&page='+str(count)
-        request = urllib2.Request(url=url, headers=headers)
-        response = urllib2.urlopen(request)
-        data = response.read()
-        print 'end read'
-        res = str(data)
-        if get_page(res, user_collect) is None:
+    urls = []
+    page_num = (anime_num - 1) / 24 + 1
+    for i in range(page_num):
+        urls.append('http://bgm.tv/anime/list/%s/%s?page=%d' % (bgm_id, _type, i+1))
+    res = muti_scrawl_page(urls)
+
+    for r in res:
+        if get_page(r.content, user_collect) is None:
             break
     # data = data.decode('utf-8')
     # print(res)
@@ -105,10 +247,10 @@ def get_page(string, user_collect):
     for i in range(2, length - 1):
         dic = {}
 
-        name_res = re.search(name_pattern, animation[i]).group()
-        pos = name_res.rfind('>')
-        name = name_res[pos + 1: -3]
-        name = name.replace('\\\\', '\\')
+        # name_res = re.search(name_pattern, animation[i]).group()
+        # pos = name_res.rfind('>')
+        # name = name_res[pos + 1: -3]
+        # name = name.replace('\\\\', '\\')
         # print('name =', to_str(name))
         # dic['name'] = name
         id_res = re.search(animeid_pattern, animation[i]).group()
@@ -134,7 +276,7 @@ def get_page(string, user_collect):
 def get_friend_evaluation(request):
     user_id = request.GET.get('id')
     if user_id is None:
-        return render(request, 'error.html')
+        return render(request, 'error.html', {'error_message': '???unknown error'})
     friends = get_friend(user_id)
     if len(friends) == 0:
         return render(request, 'error.html', {'error_message': 'Sorry, you do not have friend.'})
@@ -146,7 +288,9 @@ def get_friend_evaluation(request):
     for bgm_id in friends:
         tmpuser = bgmUser.objects.filter(bgm_id=bgm_id)
         if len(tmpuser) == 0:
-            collect = add_user(bgm_id)
+            collect = add_user(bgm_id).get_collect()
+        elif dif_time_from_now(tmpuser[0].time) > UPDATE_DAYS:
+            collect = update_user(bgm_id).get_collect()
         else:
             collect = tmpuser[0].get_collect()
         for anime in collect:

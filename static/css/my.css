@@ -1,0 +1,14 @@
+.loading{
+    position: absolute;
+    top:0%;
+    left:0%;
+    right:0%;
+    bottom: 0%;
+    line-height:56px;
+    background: transparent url(../image/loading.gif) no-repeat 48% 45%;
+    opacity: 0.9;
+    z-index:3000;
+    -moz-border-radius:20px;
+    -webkit-border-radius:20px;
+    border-radius:5px;
+}

@@ -11,29 +11,30 @@ TIME_MAX_LENGTH = 40
 class bgmUser(models.Model):
     name = models.CharField(max_length=NAME_MAX_LENGTH)
     bgm_id = models.CharField(max_length=NAME_MAX_LENGTH)
-    time = models.DateField(max_length=TIME_MAX_LENGTH)  # 3天信息过期，进行更新
+    time = models.DateField(max_length=TIME_MAX_LENGTH)  # 7天信息过期，进行更新
     state = models.SmallIntegerField(default=0)
     file_state = models.SmallIntegerField(default=0)  # 0 no  1 read  2 write
+    # img_url = models.CharField(max_length=50)
     # collect = models.CharField(max_length=10000)
     # do = models.CharField(max_length=2000)
     # on_hold = models.CharField(max_length=1000)
     # dropped = models.CharField(max_length=2000)
 
-    def set_collect(self, x):
+    def set_collect(self, x, _type='collect'):
         while self.file_state != 0:
             time.sleep(0.05)
         self.file_state = 2
-        f = open('user_collect' + os.sep + self.bgm_id + '.txt', 'w+')
+        f = open('user_' + _type + os.sep + self.bgm_id + '.txt', 'w+')
         for item in x:
             f.write(item['id'] + ' ' + str(item['grade']) + '\n')
         f.close()
         self.file_state = 0
 
-    def get_collect(self):
+    def get_collect(self, _type='collect'):
         while self.file_state == 2:
             time.sleep(0.05)
         self.file_state = 1
-        f = open('user_collect'+os.sep+self.bgm_id+'.txt', 'r')
+        f = open('user_'+_type+os.sep+self.bgm_id+'.txt', 'r')
         content = f.readlines()
         f.close()
         self.file_state = 0
@@ -43,6 +44,19 @@ class bgmUser(models.Model):
             collect.append({'id': tmp[0], 'grade': int(tmp[1])})
         return collect
         # return json.loads(self.collect.decode('utf-8').replace("'", "\""))
+
+    def set_all(self, collect, do, on_hold, dropped):
+        self.set_collect(collect, 'collect')
+        self.set_collect(do, 'do')
+        self.set_collect(on_hold, 'on_hold')
+        self.set_collect(dropped, 'dropped')
+
+    def get_all(self):
+        collect = self.get_collect('collect')
+        do = self.get_collect('do')
+        on_hold = self.get_collect('on_hold')
+        dropped = self.get_collect('dropped')
+        return collect, do, on_hold, dropped
 
     def __str__(self):
         return self.bgm_id
