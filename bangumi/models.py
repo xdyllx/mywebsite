@@ -58,6 +58,13 @@ class bgmUser(models.Model):
         dropped = self.get_collect('dropped')
         return collect, do, on_hold, dropped
 
+    def get_all_in_one_list(self):
+        collect = self.get_collect('collect')
+        do = self.get_collect('do')
+        on_hold = self.get_collect('on_hold')
+        dropped = self.get_collect('dropped')
+        return collect + do + on_hold + dropped
+
     def __str__(self):
         return self.bgm_id
 

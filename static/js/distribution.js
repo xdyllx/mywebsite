@@ -50,7 +50,7 @@ $(document).ready(function() {
                 headers: { "X-CSRFToken": getCookie("csrftoken") }
             });
             var id = ($("button.updateInfo").attr('name'));
-            $.post("/bgm/refreshInfo/", {'id': id, 'choice': choice}, function(ret){
+            $.post("/bgm/refreshInfo/", {'id': id, 'choice': choice, 'cookie':document.cookie}, function(ret){
             //res = $.parseJSON(jQuery(ret).text());
             if (ret.status == "success") {
                 barChartData.datasets = [];
@@ -88,6 +88,7 @@ $(document).ready(function() {
         var info = get_choice();
         choice = info[0];
         count = info[1];
+
         if(count == 0)
         {
             choice = [true, false, false, true];

@@ -18,6 +18,8 @@
 <![endif]-->
     {% load static from staticfiles %}
 <link rel="stylesheet" type="text/css" href="{% static "css/gcss.css" %}" />
+<link rel="stylesheet" type="text/css" href="{% static "css/my.css" %}" />
+<script src="{% static "js/search.js" %}"></script>
 <script type="text/javascript">var SHOW_ROBOT = '0',CHOBITS_UID = 0, SITE_URL = 'http://bgm.tv';</script>
 </head>
 <body class="bangumi bangumiNeue">
@@ -126,7 +128,12 @@
 <option value="6">三次元</option>
 <option value="person">人物</option>
 </select>
-<input id="search_text" name="search_text" class="textfield" type="text" />
+<input id="search_text" name="search_text" class="textfield" type="text" onkeyup="find()"/>
+    <div style="position:absolute;" id="popup">
+        <table id="table" border="0" cellspacing="0" cellpadding="0">
+            <tbody id="table_body"></tbody>
+        </table>
+    </div>
 <input type="submit" name="submit" value="搜索" class="search" />
 </div>
 </form>
@@ -142,3 +149,4 @@
 </div></div>
 <div class="homeBg"></div>
 </body></html>
+

@@ -15,15 +15,16 @@ from django.utils.safestring import mark_safe
 
 
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:23.0) Gecko/20100101 Firefox/23.0'}
-MIN_PEOPLE_NUM = 5
+MIN_PEOPLE_NUM = 10
 ONE_PAGE_MAX_NUM = 100
 TYPE = ['collect', 'do', 'on_hold', 'dropped']
 CHINESE_TYPE = ['看过', '在看', '搁置', '抛弃']
-UPDATE_DAYS = 7
+UPDATE_DAYS = 3
 NUM_ONE_PAGE = 24
-
+MUTI_SCRAWL_SIZE = 25
 anime_num_pattern = '<ul class=\"navSubTabs\">.*?</ul>'
 span_pattern = '<span>.*?</span>'
+base_url = 'http://mirror.bgm.rin.cat/'
 
 
 def to_str(string):
@@ -36,7 +37,9 @@ def is_positive_int(string):
     return res is not None
 
 
+@csrf_exempt
 def test_web(request):
+    print request.POST.get('cookie')
     # a = bgmUser.objects.filter(bgm_id='')[0]
     # a.delete()
     return render(request, 'error.html')
@@ -56,10 +59,10 @@ def get_current_time():
 
 
 def get_bgm_num(bgm_id):
-    url = 'http://bgm.tv/anime/list/%s/collect' % bgm_id
-    request = urllib2.Request(url=url, headers=headers)
-    response = urllib2.urlopen(request)
-    data = response.read()
+    url = base_url + 'anime/list/%s/collect' % bgm_id
+    # request = urllib2.Request(url=url, headers=headers)
+    # response = urllib2.urlopen(request)
+    data = scrawl_one_page(url)
     if data.find('数据库中没有查询到该用户的信息') != -1:
         return [-1] * 4
     num = [0] * 4
@@ -70,9 +73,9 @@ def get_bgm_num(bgm_id):
             for i in range(4):
                 tmp = item.find(CHINESE_TYPE[i])
                 if tmp != -1:
-                    tmp1 = item.find(')')
-                    # print item[tmp+8:tmp1]
-                    num[i] = int(item[tmp+8:tmp1])
+                    tmp1 = item.find('(')
+                    tmp2 = item.find(')')
+                    num[i] = int(item[tmp1+1:tmp2])
                     break
 
     else:
@@ -81,15 +84,33 @@ def get_bgm_num(bgm_id):
     return num
 
 
-def muti_scrawl_page(urls):
+def scrawl_one_page(url):
+    urls = [url]
     rs = (grequests.get(u) for u in urls)
-    tmp = grequests.map(rs, size=6)
-    for item in tmp:
+    tmp = grequests.map(rs, size=1)
+    while tmp[0] is None:
+        tmp = grequests.map(rs, size=1)
+    return tmp[0].content
+
+
+def muti_scrawl_page(urls, size=MUTI_SCRAWL_SIZE):
+    rs = (grequests.get(u) for u in urls)
+    res = grequests.map(rs, size=size)
+    nonelist = []
+    for i, item in enumerate(res):
         if item is None:
-            print 'None response'
-            tmp = grequests.map(rs, size=5)
-            break
-    return tmp
+            nonelist.append(i)
+    if len(nonelist) == 0:
+        return res
+    else:
+        tmpurls = []
+        for num in nonelist:
+            tmpurls.append(urls[num])
+        print('scrawl failure, %d' % len(tmpurls))
+        tmpres = muti_scrawl_page(tmpurls, size=size)
+        for i, num in enumerate(nonelist):
+            res[num] = tmpres[i]
+        return res
 
 
 def show_anime(request):
@@ -101,7 +122,7 @@ def show_anime(request):
 
 
 def add_user(bgm_id):
-    print 'add user', bgm_id
+    print datetime.now(), 'add user', bgm_id
     collect, do, on_hold, dropped = get_user_all_bgm(bgm_id)
     if collect is None:
         return None
@@ -120,7 +141,7 @@ def add_user(bgm_id):
 
 
 def update_user(bgm_id):
-    print 'update user', bgm_id
+    print datetime.now(), 'update user', bgm_id
     bgmuser = bgmUser.objects.filter(bgm_id=bgm_id)
     if len(bgmuser) != 1:
         print 'update user error', len(bgmuser)
@@ -131,6 +152,16 @@ def update_user(bgm_id):
     bgmuser[0].time = get_current_time()
     bgmuser[0].save()
     return bgmuser[0]
+
+
+def did_user_judge_ep(request):
+    print('receive request')
+    user_id = request.GET.get('user_id')
+    ep_id = request.GET.get('ep_id')
+    print(user_id, ep_id)
+    ret = dict()
+    ret['res'] = False
+    return HttpResponse(json.dumps(ret), content_type='application/json')
 
 
 def show_distribution(request):
@@ -157,6 +188,7 @@ def show_distribution(request):
 
 
 def refreshInfo(request):
+    # print request.POST.get('cookie')
     user_id = request.POST.get('id')
     tmp = dict(request.POST)
     choice = tmp.get('choice[]')
@@ -199,7 +231,7 @@ def updateInfo(request):
                 distri.append([])
         data['distri'] = distri
         data['choice'] = choice
-        data['time'] = bgmuser.time
+        data['time'] = str(bgmuser.time)
         return HttpResponse(json.dumps(data), content_type='application/json')
 
 
@@ -221,13 +253,6 @@ def get_user_all_bgm(bgm_id):
     return collect, do, on_hold, dropped
 
 
-def get_all_num(bgm_id):
-    url = 'http://bgm.tv/user/' + bgm_id
-    request = urllib2.Request(url=url, headers=headers)
-    response = urllib2.urlopen(request)
-    data = response.read()
-
-
 def get_user_collect(bgm_id, anime_num, _type='collect'):
     if anime_num == 0:
         return []
@@ -236,14 +261,18 @@ def get_user_collect(bgm_id, anime_num, _type='collect'):
     urls = []
     page_num = (anime_num - 1) / 24 + 1
     for i in range(page_num):
-        urls.append('http://bgm.tv/anime/list/%s/%s?page=%d' % (bgm_id, _type, i+1))
+        urls.append(base_url + 'anime/list/%s/%s?page=%d' % (bgm_id, _type, i+1))
     res = muti_scrawl_page(urls)
 
     for r in res:
+        if r is None:
+            print 'None error, continue'
+            continue
         if get_page(r.content, user_collect) is None:
             break
     # data = data.decode('utf-8')
     # print(res)
+    print 'finish', bgm_id, _type
     return user_collect
 
 
@@ -292,7 +321,7 @@ def get_friend_evaluation(request):
     if user_id is None:
         return render(request, 'error.html', {'error_message': '???unknown error'})
     friends = get_friend(user_id)
-    if len(friends) == 0:
+    if len(friends) == 1:
         return render(request, 'error.html', {'error_message': 'Sorry, you do not have friend.'})
     page = request.GET.get('page')
     if page is None or is_positive_int(page) is not True:
@@ -307,11 +336,11 @@ def get_friend_evaluation(request):
     for bgm_id in friends:
         tmpuser = bgmUser.objects.filter(bgm_id=bgm_id)
         if len(tmpuser) == 0:
-            collect = add_user(bgm_id).get_collect()
+            collect = add_user(bgm_id).get_all_in_one_list()
         elif dif_time_from_now(tmpuser[0].time) > UPDATE_DAYS:
-            collect = update_user(bgm_id).get_collect()
+            collect = update_user(bgm_id).get_all_in_one_list()
         else:
-            collect = tmpuser[0].get_collect()
+            collect = tmpuser[0].get_all_in_one_list()
         for anime in collect:
             if anime['grade'] == 0:
                 continue
@@ -329,16 +358,22 @@ def get_friend_evaluation(request):
     for i in range(length):
         if count[i] > MIN_PEOPLE_NUM:
             show_list.append({'id': anime_id[i], 'grade': round(float(grade[i]) / count[i], 4), 'count': count[i]})
-
+    show_list.sort(key=lambda x: x['count'], reverse=True)
     show_list.sort(key=lambda x: x['grade'], reverse=True)
+
+    # f = open('grade.txt', 'w+')
+    # for i in range(120):
+    #     f.write('%s %s %d\n' % (show_list[i]['id'], str(show_list[i]['grade']), show_list[i]['count']))
+    # #     f.write(show_list[i]['id'] + ' 第%d名 '%(i+1) + str(show_list[i]['grade']) + '(' + str(show_list[i]['count']) + '人评分)\n')
+    # f.close()
     list_length = len(show_list)
     page_max = (list_length - 1) / NUM_ONE_PAGE + 1
     if page > page_max:
         page = page_max
     if page * NUM_ONE_PAGE > list_length:
-        show_list = show_list[(page-1)*NUM_ONE_PAGE+1:]
+        show_list = show_list[(page-1)*NUM_ONE_PAGE:]
     else:
-        show_list = show_list[(page-1)*NUM_ONE_PAGE+1:page*NUM_ONE_PAGE+1]
+        show_list = show_list[(page-1)*NUM_ONE_PAGE:page*NUM_ONE_PAGE]
     real_list = []
     c = (page-1) * 24
     for item in show_list:
@@ -350,11 +385,11 @@ def get_friend_evaluation(request):
         tmpa = tmpa[0]
         c += 1
         dic = {'name': tmpa.name, 'foreign_name': tmpa.foreign_name, 'bgm_id': item['id'],
-               'num': item['count'], 'grade': item['grade'], 'int_grade': int(item['grade']),
+               'num': item['count'], 'grade': item['grade'], 'int_grade': int(item['grade']+0.5),
                'img_url': tmpa.img_url, 'info': tmpa.info, 'rank': c,  'flag': c % 2}
         real_list.append(dic)
 
-    before_list = range(max(1, page-5), page-1)
+    before_list = range(max(1, page-5), page)
     after_list = range(page+1, min(page+5, page_max+1))
 
     return render(request, 'showAnime.html', {'animelist': real_list, 'bgm_id': user_id,
@@ -363,10 +398,8 @@ def get_friend_evaluation(request):
 
 
 def get_friend(username):
-    url = 'http://bgm.tv/user/' + username + '/friends'
-    # opener = urllib2.build_opener()
-    req = urllib2.Request(url, headers=headers)
-    res = urllib2.urlopen(req).read()
+    url = base_url + 'user/' + username + '/friends'
+    res = scrawl_one_page(url)
     print 'end read'
     # res = opener.open(req).read()
     soup = bs(str(res), 'lxml')
@@ -377,7 +410,8 @@ def get_friend(username):
         tmp = str(item)
         pos1 = tmp.find('user/')
         pos2 = tmp.find('>')
-        friends.append(tmp[pos1+5: pos2-1])
+        if tmp[pos1+5: pos2-1] != 'soranomethod':
+            friends.append(tmp[pos1+5: pos2-1])
     return friends
 
 
@@ -437,10 +471,4 @@ def update_anime_database(request):
                                      grade=grade, img_url=img_url,info=info)
 
     return render(request, 'showAnime.html')
-
-
-if __name__ == '__main__':
-    # get_friend('windrises')
-    add_user('windrises')
-    # update_anime_database(1)
 

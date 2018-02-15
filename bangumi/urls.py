@@ -8,5 +8,6 @@ urlpatterns = [
     url(r'test/$', views.test_web, name='test'),
     url(r'updateInfo/$', views.updateInfo, name='updateInfo'),
     url(r'refreshInfo/$', views.refreshInfo, name='refreshInfo'),
-    url(r'showDis/$', views.show_distribution, name='show_distribution')
+    url(r'showDis/$', views.show_distribution, name='show_distribution'),
+    url(r'user_ep/$', views.did_user_judge_ep, name='user_ep'),
 ]
