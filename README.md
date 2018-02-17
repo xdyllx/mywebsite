@@ -4,4 +4,4 @@
 ### 环境
 #### Python2.7 Django 1.10
 ### 用到的库
-#### bs4
+#### bs4 grequests

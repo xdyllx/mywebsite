@@ -2,7 +2,7 @@
 
 from django.db import models
 import os, time
-# import json
+import json
 # CONST VALUE
 NAME_MAX_LENGTH = 25
 TIME_MAX_LENGTH = 40
@@ -78,3 +78,14 @@ class Anime(models.Model):
     img_url = models.CharField(max_length=50)
     info = models.CharField(max_length=100)
     rank = models.SmallIntegerField(default=0)
+
+
+class Episode(models.Model):
+    ep_id = models.CharField(max_length=10, unique=True)
+    evaluation = models.CharField(max_length=1000)
+
+    def get_evaluation(self):
+        return json.loads(self.evaluation)
+
+    def set_evaluation(self, _evaluation):
+        self.evaluation = json.dumps(_evaluation)

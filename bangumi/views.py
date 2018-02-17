@@ -2,12 +2,12 @@
 # from __future__ import unicode_literals
 import re
 from bs4 import BeautifulSoup as bs
-import urllib,  urllib2
+# import urllib,  urllib2
 import grequests
 from datetime import datetime
 import os
 from django.shortcuts import render
-from models import bgmUser, Anime
+from models import bgmUser, Anime, Episode
 import json
 from django.views.decorators.csrf import csrf_exempt
 from django.http import Http404, HttpResponseRedirect, HttpResponse
@@ -158,10 +158,76 @@ def did_user_judge_ep(request):
     print('receive request')
     user_id = request.GET.get('user_id')
     ep_id = request.GET.get('ep_id')
+    callback = request.GET.get('callback')
+    if callback is None:
+        callback = '?'
+    print('callback:', callback)
     print(user_id, ep_id)
     ret = dict()
+    ep = Episode.objects.filter(ep_id=ep_id)
+    if len(ep) == 1:
+        ep = ep[0]
+        evaluation = ep.get_evaluation()
+        if evaluation['user'].count(user_id) > 0:
+            count = [0] * 5
+            num = len(evaluation['rate'])
+            for item in evaluation['rate']:
+                count[5 - item] += 1  # 54321顺序
+            width = list()
+            for i in range(5):
+                width.append('%.2f' % (count[i] * 100.0 / num))
+            ret['count'] = count
+            ret['width'] = width
+            ret['choice'] = evaluation['rate'][evaluation['user'].index(user_id)]
+            ret['res'] = True
+            ret['voters'] = num
+            return HttpResponse(callback + '('+json.dumps(ret)+');', content_type='application/json')
+
     ret['res'] = False
-    return HttpResponse(json.dumps(ret), content_type='application/json')
+    response = HttpResponse(callback + '('+json.dumps(ret)+');', content_type='application/json')
+    return response
+
+
+def add_user_vote_ep(request):
+    user_id = request.GET.get('user_id')
+    ep_id = request.GET.get('ep_id')
+    rate = request.GET.get('rate')
+    callback = request.GET.get('callback')
+    print(user_id, ep_id, rate)
+    ret = dict()
+    if user_id is None or ep_id is None or rate is None:
+        ret['success'] = False
+        ret['message'] = 'unknown error'
+        return HttpResponse(callback + '(' + json.dumps(ret) + ');', content_type='application/json')
+    # rate valid
+    rate = int(rate)
+    ep = Episode.objects.filter(ep_id=ep_id)
+    if len(ep) == 0:
+        evaluation = {'user': [user_id], 'rate': [rate]}
+        ep = Episode.objects.create(ep_id=ep_id, evaluation=json.dumps(evaluation))
+    else:
+        ep = ep[0]
+        evaluation = ep.get_evaluation()
+        if evaluation['user'].count(user_id) > 0:
+            ret['success'] = False
+            ret['message'] = '你已投过票！'
+            return HttpResponse(callback + '(' + json.dumps(ret) + ');', content_type='application/json')
+
+        evaluation['user'].append(user_id)
+        evaluation['rate'].append(rate)
+    count = [0]*5
+    num = len(evaluation['rate'])
+    for item in evaluation['rate']:
+        count[5-item] += 1  # 54321顺序
+    width = list()
+    for i in range(5):
+        width.append('%.2f' % (count[i] * 100.0 / num))
+    ret['count'] = count
+    ret['width'] = width
+    ret['choice'] = rate
+    ret['success'] = True
+    ret['voters'] = num
+    return HttpResponse(callback + '(' + json.dumps(ret) + ');', content_type='application/json')
 
 
 def show_distribution(request):
