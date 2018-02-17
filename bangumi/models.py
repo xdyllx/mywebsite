@@ -89,3 +89,4 @@ class Episode(models.Model):
 
     def set_evaluation(self, _evaluation):
         self.evaluation = json.dumps(_evaluation)
+        self.save()

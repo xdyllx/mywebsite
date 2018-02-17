@@ -215,6 +215,7 @@ def add_user_vote_ep(request):
 
         evaluation['user'].append(user_id)
         evaluation['rate'].append(rate)
+        ep.set_evaluation(evaluation)
     count = [0]*5
     num = len(evaluation['rate'])
     for item in evaluation['rate']:
