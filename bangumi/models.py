@@ -79,6 +79,9 @@ class Anime(models.Model):
     info = models.CharField(max_length=100)
     rank = models.SmallIntegerField(default=0)
 
+    def __str__(self):
+        return self.name
+
 
 class Episode(models.Model):
     ep_id = models.CharField(max_length=10, unique=True)
@@ -90,3 +93,6 @@ class Episode(models.Model):
     def set_evaluation(self, _evaluation):
         self.evaluation = json.dumps(_evaluation)
         self.save()
+
+    def __str__(self):
+        return self.ep_id
