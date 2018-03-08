@@ -155,14 +155,9 @@ def update_user(bgm_id):
 
 
 def did_user_judge_ep(request):
-    print('receive request')
-    user_id = request.GET.get('user_id')
-    ep_id = request.GET.get('ep_id')
-    callback = request.GET.get('callback')
-    if callback is None:
-        callback = '?'
-    print('callback:', callback)
-    print(user_id, ep_id)
+    user_id = request.POST.get('user_id')
+    ep_id = request.POST.get('ep_id')
+
     ret = dict()
     ep = Episode.objects.filter(ep_id=ep_id)
     if len(ep) == 1:
@@ -181,24 +176,25 @@ def did_user_judge_ep(request):
             ret['choice'] = evaluation['rate'][evaluation['user'].index(user_id)]
             ret['res'] = True
             ret['voters'] = num
-            return HttpResponse(callback + '('+json.dumps(ret)+');', content_type='application/json')
+            return HttpResponse(json.dumps(ret), content_type='application/json')
 
     ret['res'] = False
-    response = HttpResponse(callback + '('+json.dumps(ret)+');', content_type='application/json')
+    response = HttpResponse(json.dumps(ret), content_type='application/json')
+    # response = HttpResponse(callback + '('+json.dumps(ret)+');', content_type='application/json')
     return response
 
 
 def add_user_vote_ep(request):
-    user_id = request.GET.get('user_id')
-    ep_id = request.GET.get('ep_id')
-    rate = request.GET.get('rate')
-    callback = request.GET.get('callback')
-    print(user_id, ep_id, rate)
+    user_id = request.POST.get('user_id')
+    ep_id = request.POST.get('ep_id')
+    rate = request.POST.get('rate')
+
+    # print(user_id, ep_id, rate)
     ret = dict()
     if user_id is None or ep_id is None or rate is None:
         ret['success'] = False
         ret['message'] = 'unknown error'
-        return HttpResponse(callback + '(' + json.dumps(ret) + ');', content_type='application/json')
+        return HttpResponse(json.dumps(ret), content_type='application/json')
     # rate valid
     rate = int(rate)
     ep = Episode.objects.filter(ep_id=ep_id)
@@ -211,7 +207,7 @@ def add_user_vote_ep(request):
         if evaluation['user'].count(user_id) > 0:
             ret['success'] = False
             ret['message'] = '你已投过票！'
-            return HttpResponse(callback + '(' + json.dumps(ret) + ');', content_type='application/json')
+            return HttpResponse(json.dumps(ret), content_type='application/json')
 
         evaluation['user'].append(user_id)
         evaluation['rate'].append(rate)
@@ -228,7 +224,7 @@ def add_user_vote_ep(request):
     ret['choice'] = rate
     ret['success'] = True
     ret['voters'] = num
-    return HttpResponse(callback + '(' + json.dumps(ret) + ');', content_type='application/json')
+    return HttpResponse(json.dumps(ret), content_type='application/json')
 
 
 def show_distribution(request):
