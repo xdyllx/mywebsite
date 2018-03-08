@@ -95,4 +95,4 @@ class Episode(models.Model):
         self.save()
 
     def __str__(self):
-        return self.ep_id
+        return self.ep_id + self.evaluation

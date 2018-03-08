@@ -19,7 +19,7 @@ MIN_PEOPLE_NUM = 10
 ONE_PAGE_MAX_NUM = 100
 TYPE = ['collect', 'do', 'on_hold', 'dropped']
 CHINESE_TYPE = ['看过', '在看', '搁置', '抛弃']
-UPDATE_DAYS = 3
+UPDATE_DAYS = 13
 NUM_ONE_PAGE = 24
 MUTI_SCRAWL_SIZE = 25
 anime_num_pattern = '<ul class=\"navSubTabs\">.*?</ul>'
