@@ -126,8 +126,8 @@ def get_marked_episode(request):
 
 
 def did_user_judge_ep(request):
-    user_id = request.POST.get('user_id')
-    ep_id = request.POST.get('ep_id')
+    user_id = request.GET.get('user_id')
+    ep_id = request.GET.get('ep_id')
 
     ret = dict()
     ep = Episode.objects.filter(ep_id=ep_id)
