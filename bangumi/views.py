@@ -1,9 +1,7 @@
 # coding=utf-8
 # from __future__ import unicode_literals
-import re
 from bs4 import BeautifulSoup as bs
 # import urllib,  urllib2
-import grequests
 from datetime import datetime
 import os
 from django.shortcuts import render
@@ -12,108 +10,22 @@ import json
 from django.views.decorators.csrf import csrf_exempt
 from django.http import Http404, HttpResponseRedirect, HttpResponse
 from django.utils.safestring import mark_safe
-
-
-headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:23.0) Gecko/20100101 Firefox/23.0'}
-MIN_PEOPLE_NUM = 10
-ONE_PAGE_MAX_NUM = 100
-TYPE = ['collect', 'do', 'on_hold', 'dropped']
-CHINESE_TYPE = ['看过', '在看', '搁置', '抛弃']
-UPDATE_DAYS = 13
-NUM_ONE_PAGE = 24
-MUTI_SCRAWL_SIZE = 25
-anime_num_pattern = '<ul class=\"navSubTabs\">.*?</ul>'
-span_pattern = '<span>.*?</span>'
-base_url = 'http://mirror.bgm.rin.cat/'
-
-
-def to_str(string):
-    return string.encode('latin-1').decode('unicode_escape').encode('raw_unicode_escape').decode()
-
-
-def is_positive_int(string):
-    int_pattern = r'^0*[123456789]\d*$'
-    res = re.match(pattern=int_pattern, string=string)
-    return res is not None
+# from base_functions import *
+from db_operation import *
 
 
 @csrf_exempt
 def test_web(request):
+    # quick_add_user('322380')
+    add_anime('152091')
     print request.POST.get('cookie')
     # a = bgmUser.objects.filter(bgm_id='')[0]
     # a.delete()
     return render(request, 'error.html')
 
 
-def dif_time_from_now(time):
-    # _time = datetime.strptime(time, '%Y-%m-%d')
-    now = datetime.now().date()
-    return (now-time).days
-
-
-def get_current_time():
-    # time = str(datetime.now())
-    # pos = time.find(' ')
-    # return time[:pos]
-    return datetime.now().date()
-
-
-def get_bgm_num(bgm_id):
-    url = base_url + 'anime/list/%s/collect' % bgm_id
-    # request = urllib2.Request(url=url, headers=headers)
-    # response = urllib2.urlopen(request)
-    data = scrawl_one_page(url)
-    if data.find('数据库中没有查询到该用户的信息') != -1:
-        return [-1] * 4
-    num = [0] * 4
-    a = re.findall(string=data, pattern=anime_num_pattern, flags=re.S)
-    if len(a) == 1:
-        b = re.findall(string=a[0], pattern=span_pattern)
-        for item in b:
-            for i in range(4):
-                tmp = item.find(CHINESE_TYPE[i])
-                if tmp != -1:
-                    tmp1 = item.find('(')
-                    tmp2 = item.find(')')
-                    num[i] = int(item[tmp1+1:tmp2])
-                    break
-
-    else:
-        print 'error: cannot get number show on bgm '
-
-    return num
-
-
-def scrawl_one_page(url):
-    urls = [url]
-    rs = (grequests.get(u) for u in urls)
-    tmp = grequests.map(rs, size=1)
-    while tmp[0] is None:
-        tmp = grequests.map(rs, size=1)
-    return tmp[0].content
-
-
-def muti_scrawl_page(urls, size=MUTI_SCRAWL_SIZE):
-    rs = (grequests.get(u) for u in urls)
-    res = grequests.map(rs, size=size)
-    nonelist = []
-    for i, item in enumerate(res):
-        if item is None:
-            nonelist.append(i)
-    if len(nonelist) == 0:
-        return res
-    else:
-        tmpurls = []
-        for num in nonelist:
-            tmpurls.append(urls[num])
-        print('scrawl failure, %d' % len(tmpurls))
-        tmpres = muti_scrawl_page(tmpurls, size=size)
-        for i, num in enumerate(nonelist):
-            res[num] = tmpres[i]
-        return res
-
-
 def show_anime(request):
+
     return render(request, 'distribution.html')
     animelist = []
     tmpa = Anime.objects.filter(bgm_id='111876')
@@ -121,37 +33,96 @@ def show_anime(request):
     return render(request, 'showAnime.html', {'animelist': animelist})
 
 
-def add_user(bgm_id):
-    print datetime.now(), 'add user', bgm_id
-    collect, do, on_hold, dropped = get_user_all_bgm(bgm_id)
-    if collect is None:
-        return None
-    bgmuser = bgmUser.objects.filter(bgm_id=bgm_id)
-    if len(bgmuser) == 0:
-        bgmuser = bgmUser.objects.create(
-            bgm_id=bgm_id,
-            time=get_current_time(),
-        )
+def mark_episode(request):
+    user_id = request.GET.get('user_id')
+    subject_id = request.GET.get('sub_id')
+    ep_id = request.GET.get('ep_id')
+    # print('marked', user_id, subject_id, ep_id)
+
+    referer = request.META.get('HTTP_REFERER')
+    if referer is not None:
+        response = HttpResponseRedirect(referer)
     else:
-        bgmuser = bgmuser[0]
-    bgmuser.set_all(collect, do, on_hold, dropped)
-    # bgmuser.collect = user_collect
-    bgmuser.save()
-    return bgmuser
+        if subject_id is None:
+            response = HttpResponseRedirect('https://bgm.tv')
+        else:
+            response = HttpResponseRedirect('https://bgm.tv/subject/' + subject_id)
+    if user_id is None or subject_id is None or ep_id is None:
+        return response
+
+    user, u_iscreate = bgmUser.objects.get_or_create(bgm_id=user_id)
+    if u_iscreate:
+        user = quick_add_user(user_id)
+    anime, a_iscreate = Anime.objects.get_or_create(bgm_id=subject_id)
+    if a_iscreate:
+        anime = add_anime(subject_id)
+
+    ep = Episode.objects.filter(ep_id=ep_id)
+    if len(ep) == 0:
+        ep = Episode.objects.create(ep_id=ep_id)
+        ep.set_evaluation({'user': [], 'rate': []})
+    else:
+        ep = ep[0]
+    if ep.anime is None:
+        ep.anime = anime
+    ep.bgmUser.add(user)
+    ep.save()
+    return response
 
 
-def update_user(bgm_id):
-    print datetime.now(), 'update user', bgm_id
-    bgmuser = bgmUser.objects.filter(bgm_id=bgm_id)
-    if len(bgmuser) != 1:
-        print 'update user error', len(bgmuser)
-        return -1
+def delete_marked_episode(request):
+    user_id = request.GET.get('user_id')
+    subject_id = request.GET.get('sub_id')
+    ep_id = request.GET.get('ep_id')
 
-    collect, do, on_hold, dropped = get_user_all_bgm(bgm_id)
-    bgmuser[0].set_all(collect, do, on_hold, dropped)
-    bgmuser[0].time = get_current_time()
-    bgmuser[0].save()
-    return bgmuser[0]
+    ep = Episode.objects.filter(ep_id=ep_id)
+    anime = Anime.objects.filter(bgm_id=subject_id)
+    user = bgmUser.objects.filter(bgm_id=user_id)
+
+    referer = request.META.get('HTTP_REFERER')
+    if referer is not None:
+        response = HttpResponseRedirect(referer)
+    else:
+        if subject_id is None:
+            response = HttpResponseRedirect('https://bgm.tv')
+        else:
+            response = HttpResponseRedirect('https://bgm.tv/subject/' + subject_id)
+
+    if len(ep) == 0 or len(anime) == 0 or len(user) == 0:
+        return response
+
+    ep = ep[0]
+
+    if ep.anime is None:
+        ep.anime = anime[0]
+
+    ep.bgmUser.remove(user[0])
+    ep.save()
+    return response
+
+
+def get_marked_episode(request):
+    user_id = request.GET.get('user_id')
+    subject_id = request.GET.get('sub_id')
+
+    user, u_iscreate = bgmUser.objects.get_or_create(bgm_id=user_id)
+    if u_iscreate:
+        user = quick_add_user(user_id)
+    anime, a_iscreate = Anime.objects.get_or_create(bgm_id=subject_id)
+    if a_iscreate:
+        anime = add_anime(subject_id)
+
+    ret = {'success': False}
+    if anime is not None and user is not None:
+        eps = list(anime.episode_set.values_list('ep_id', flat=True))
+        # print(eps, type(eps))
+        marked_eps = user.episode_set.filter(ep_id__in=eps)
+
+        # print(marked_eps)
+        ret['success'] = True
+        ret['eps'] = list(marked_eps.values_list('ep_id', flat=True))
+
+    return HttpResponse(json.dumps(ret), content_type='application/json')
 
 
 def did_user_judge_ep(request):
@@ -296,87 +267,6 @@ def updateInfo(request):
         data['choice'] = choice
         data['time'] = str(bgmuser.time)
         return HttpResponse(json.dumps(data), content_type='application/json')
-
-
-def get_distribution(anime_list):
-    distri = [0] * 11
-    for anime in anime_list:
-        distri[anime['grade']] += 1
-    return distri
-
-
-def get_user_all_bgm(bgm_id):
-    num = get_bgm_num(bgm_id)
-    if num[0] == -1:
-        return [None] * 4
-    collect = get_user_collect(bgm_id, num[0], 'collect')
-    do = get_user_collect(bgm_id, num[1], 'do')
-    on_hold = get_user_collect(bgm_id, num[2], 'on_hold')
-    dropped = get_user_collect(bgm_id, num[3], 'dropped')
-    return collect, do, on_hold, dropped
-
-
-def get_user_collect(bgm_id, anime_num, _type='collect'):
-    if anime_num == 0:
-        return []
-
-    user_collect = []
-    urls = []
-    page_num = (anime_num - 1) / 24 + 1
-    for i in range(page_num):
-        urls.append(base_url + 'anime/list/%s/%s?page=%d' % (bgm_id, _type, i+1))
-    res = muti_scrawl_page(urls)
-
-    for r in res:
-        if r is None:
-            print 'None error, continue'
-            continue
-        if get_page(r.content, user_collect) is None:
-            break
-    # data = data.decode('utf-8')
-    # print(res)
-    print 'finish', bgm_id, _type
-    return user_collect
-
-
-def get_page(string, user_collect):
-    tmp = []
-    animation_pattern = '<div class=\"inner\">.*?</div>'
-    name_pattern = '<a href=.*? class=\"l\".*?</a'
-    grade_pattern = 'sstars.*?></span>'
-    animeid_pattern = '<a href=\"/subject/.*?\"'
-    animation = re.findall(animation_pattern, string, re.S)
-    length = len(animation)
-    # print(length)
-    if length == 3:
-        return None
-    for i in range(2, length - 1):
-        dic = {}
-
-        # name_res = re.search(name_pattern, animation[i]).group()
-        # pos = name_res.rfind('>')
-        # name = name_res[pos + 1: -3]
-        # name = name.replace('\\\\', '\\')
-        # print('name =', to_str(name))
-        # dic['name'] = name
-        id_res = re.search(animeid_pattern, animation[i]).group()
-        pos = id_res.rfind('/')
-        anime_id = id_res[pos+1: -1]
-        dic['id'] = anime_id
-        grade_res = re.search(grade_pattern, animation[i])
-
-        if grade_res is not None:
-            grade_res = grade_res.group()
-            pos = grade_res.find(' ')
-            grade = int(grade_res[6:pos])
-            # print('grade=', grade)
-            dic['grade'] = grade
-        else:
-            dic['grade'] = 0
-        user_collect.append(dic)
-    if length < 27:
-        return None
-    return 1
 
 
 def get_friend_evaluation(request):
